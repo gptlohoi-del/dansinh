@@ -1,184 +1,314 @@
+```html
 <!DOCTYPE html>
-
 <html lang="vi">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>English Reader</title>
 
 <style>
+
+*{
+    box-sizing:border-box;
+}
+
 body{
-    font-family: Arial, sans-serif;
-    margin:20px;
+    margin:0;
+    font-family:Arial, sans-serif;
+}
+
+.container{
+    display:flex;
+    height:100vh;
+}
+
+/* Bài đọc */
+
+.reader{
+    flex:1;
+    padding:20px;
+    overflow-y:auto;
 }
 
 .toolbar{
-    margin-bottom:15px;
+    margin-bottom:20px;
 }
 
-button{
-    padding:8px 12px;
+.toolbar button{
+    padding:8px 15px;
+    font-size:16px;
     cursor:pointer;
 }
 
 #content{
-    font-size:24px;
+    font-size:26px;
     line-height:2;
 }
 
+/* Từ */
+
 .word{
     cursor:pointer;
-    padding:2px 4px;
     border-radius:4px;
+    padding:2px 3px;
+    transition:0.2s;
 }
 
 .word:hover{
-    background:#fff4a3;
+    background:#fff3a0;
 }
 
-#popup{
-    position:fixed;
-    right:20px;
-    bottom:20px;
-    width:350px;
-    background:white;
-    border:1px solid #ccc;
-    padding:15px;
-    box-shadow:0 0 10px rgba(0,0,0,0.2);
-    display:none;
+.word.active{
+    background:#ffe082;
+}
+
+/* Panel từ điển */
+
+.dictionary{
+    width:400px;
+    border-left:1px solid #ddd;
+    padding:20px;
+    overflow-y:auto;
+    background:#fafafa;
+}
+
+.dictionary h2{
+    margin-top:0;
 }
 
 #selectedWord{
-    font-size:24px;
+    font-size:32px;
     font-weight:bold;
 }
 
-.audioBtn{
-    font-size:24px;
+#phonetic{
+    color:#666;
+    font-size:18px;
+}
+
+#audioBtn{
+    font-size:28px;
     cursor:pointer;
     margin-left:10px;
 }
 
-.loading{
-    color:#666;
+.section{
+    margin-top:20px;
 }
-</style>
 
+.loading{
+    color:#777;
+}
+
+@media (max-width:900px){
+
+    .container{
+        flex-direction:column;
+    }
+
+    .dictionary{
+        width:100%;
+        border-left:none;
+        border-top:1px solid #ddd;
+        height:300px;
+    }
+
+}
+
+</style>
 </head>
+
 <body>
 
-<div class="toolbar">
-    <button onclick="changeFontSize(2)">A+</button>
-    <button onclick="changeFontSize(-2)">A-</button>
-</div>
+<div class="container">
 
-<div id="content">
-Đang tải...
-</div>
+    <div class="reader">
 
-<div id="popup">
+        <div class="toolbar">
+            <button onclick="changeFontSize(2)">A+</button>
+            <button onclick="changeFontSize(-2)">A-</button>
+        </div>
 
-    <div>
-        <span id="selectedWord"></span>
-        <span class="audioBtn" onclick="playAudio()">🔊</span>
+        <div id="content">
+            Đang tải nội dung...
+        </div>
+
     </div>
 
-    <hr>
+    <div class="dictionary">
 
-    <div>
-        <b>Phiên âm:</b>
-        <span id="phonetic"></span>
-    </div>
+        <h2>Từ điển</h2>
 
-    <br>
+        <div id="selectedWord">
+            Click vào một từ
+        </div>
 
-    <div>
-        <b>Nghĩa tiếng Việt:</b>
-        <div id="meaning"></div>
+        <div>
+            <span id="phonetic"></span>
+            <span id="audioBtn" onclick="playAudio()">🔊</span>
+        </div>
+
+        <div class="section">
+            <b>Nghĩa tiếng Việt</b>
+            <div id="meaning"></div>
+        </div>
+
+        <div class="section">
+            <b>Loại từ</b>
+            <div id="partOfSpeech"></div>
+        </div>
+
+        <div class="section">
+            <b>Định nghĩa tiếng Anh</b>
+            <div id="definition"></div>
+        </div>
+
+        <div class="section">
+            <b>Ví dụ</b>
+            <div id="example"></div>
+        </div>
+
     </div>
 
 </div>
 
 <script>
 
-let currentFontSize = 24;
+let currentFontSize = 26;
 let currentAudio = null;
 
-// đọc text.txt
-fetch("text.txt")
-.then(res => res.text())
-.then(text => {
+loadText();
 
-    const tokens = text.split(/(\s+)/);
+/* ------------------------- */
+/* Đọc file text.txt */
+/* ------------------------- */
 
-    let html = "";
+function loadText(){
 
-    tokens.forEach(token => {
+    fetch("text.txt")
+    .then(res => res.text())
+    .then(text => {
 
-        if(token.trim() === ""){
-            html += token;
-        }
-        else{
-            html += `<span class="word">${token}</span>`;
-        }
+        const words = text.split(/(\s+)/);
 
+        let html = "";
+
+        words.forEach(item => {
+
+            if(item.trim()===""){
+                html += item;
+            }
+            else{
+                html += `<span class="word">${item}</span>`;
+            }
+
+        });
+
+        document.getElementById("content").innerHTML = html;
+
+        attachEvents();
+
+    })
+    .catch(err => {
+
+        document.getElementById("content").innerHTML =
+            "Không thể đọc file text.txt";
+
+        console.error(err);
     });
 
-    document.getElementById("content").innerHTML = html;
+}
 
-    document.querySelectorAll(".word").forEach(word => {
+/* ------------------------- */
 
-        word.addEventListener("click", () => {
+function attachEvents(){
 
-            const cleanWord = word.innerText
+    document.querySelectorAll(".word")
+    .forEach(word => {
+
+        word.addEventListener("click", async () => {
+
+            document
+                .querySelectorAll(".word")
+                .forEach(w => w.classList.remove("active"));
+
+            word.classList.add("active");
+
+            let cleanWord =
+                word.innerText
                 .toLowerCase()
                 .replace(/[^a-z'-]/g,'');
 
             if(cleanWord){
-                lookupWord(cleanWord);
+                await lookupWord(cleanWord);
             }
 
         });
 
     });
 
-});
+}
+
+/* ------------------------- */
 
 function changeFontSize(delta){
 
     currentFontSize += delta;
 
-    if(currentFontSize < 12)
-        currentFontSize = 12;
+    if(currentFontSize < 14)
+        currentFontSize = 14;
 
-    document.getElementById("content").style.fontSize =
+    document.getElementById("content")
+        .style.fontSize =
         currentFontSize + "px";
+
 }
 
+/* ------------------------- */
 
 async function lookupWord(word){
 
-    document.getElementById("popup").style.display = "block";
+    document.getElementById("selectedWord")
+        .innerText = word;
 
-    document.getElementById("selectedWord").innerText = word;
-    document.getElementById("phonetic").innerText = "...";
-    document.getElementById("meaning").innerHTML =
+    document.getElementById("phonetic")
+        .innerText = "...";
+
+    document.getElementById("meaning")
+        .innerHTML =
         "<span class='loading'>Đang tra cứu...</span>";
+
+    document.getElementById("definition")
+        .innerHTML = "";
+
+    document.getElementById("example")
+        .innerHTML = "";
+
+    document.getElementById("partOfSpeech")
+        .innerHTML = "";
+
+    currentAudio = null;
 
     try{
 
-        // ==========================
-        // 1. Lấy phát âm + audio
-        // ==========================
+        /* -------------------------
+           Dictionary API
+        ------------------------- */
 
-        const dictRes = await fetch(
-            `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-        );
+        const dictRes =
+            await fetch(
+                `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
+            );
 
-        const dictData = await dictRes.json();
+        const dictData =
+            await dictRes.json();
 
         let phonetic = "";
-        currentAudio = null;
+        let definition = "";
+        let example = "";
+        let partOfSpeech = "";
 
         if(Array.isArray(dictData)){
 
@@ -189,57 +319,119 @@ async function lookupWord(word){
                 dictData[0].phonetics || [];
 
             const audioObj =
-                phonetics.find(p => p.audio);
+                phonetics.find(
+                    p => p.audio && p.audio.length > 0
+                );
 
             if(audioObj){
                 currentAudio = audioObj.audio;
             }
+
+            if(dictData[0].meanings?.length){
+
+                const firstMeaning =
+                    dictData[0].meanings[0];
+
+                partOfSpeech =
+                    firstMeaning.partOfSpeech || "";
+
+                if(firstMeaning.definitions?.length){
+
+                    definition =
+                        firstMeaning
+                        .definitions[0]
+                        .definition || "";
+
+                    example =
+                        firstMeaning
+                        .definitions[0]
+                        .example || "";
+
+                }
+
+            }
+
         }
 
-        document.getElementById("phonetic").innerText =
-            phonetic || "Không có";
+        document.getElementById("phonetic")
+            .innerText = phonetic;
 
-        // ==========================
-        // 2. Dịch tiếng Việt
-        // ==========================
+        document.getElementById("definition")
+            .innerText = definition;
 
-        const transRes = await fetch(
-            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(word)}`
-        );
+        document.getElementById("example")
+            .innerText = example;
 
-        const transData = await transRes.json();
+        document.getElementById("partOfSpeech")
+            .innerText = partOfSpeech;
+
+        /* -------------------------
+           Google Translate
+        ------------------------- */
+
+        const transRes =
+            await fetch(
+                `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(word)}`
+            );
+
+        const transData =
+            await transRes.json();
 
         const vietnamese =
             transData[0]
-                .map(item => item[0])
-                .join("");
+            .map(item => item[0])
+            .join("");
 
-        document.getElementById("meaning").innerText =
-            vietnamese;
+        document.getElementById("meaning")
+            .innerText = vietnamese;
+
+        /* -------------------------
+           Tự động phát âm
+        ------------------------- */
+
+        if(currentAudio){
+
+            new Audio(currentAudio).play();
+
+        }else{
+
+            const utter =
+                new SpeechSynthesisUtterance(word);
+
+            utter.lang = "en-US";
+
+            speechSynthesis.speak(utter);
+        }
 
     }
     catch(err){
 
-        document.getElementById("meaning").innerText =
+        console.error(err);
+
+        document.getElementById("meaning")
+            .innerText =
             "Không tìm thấy.";
 
-        console.error(err);
     }
+
 }
 
+/* ------------------------- */
 
 function playAudio(){
+
+    const word =
+        document.getElementById("selectedWord")
+        .innerText;
+
+    if(!word || word==="Click vào một từ")
+        return;
 
     if(currentAudio){
 
         new Audio(currentAudio).play();
-        return;
-    }
 
-    const word =
-        document.getElementById("selectedWord").innerText;
-
-    if(word){
+    }else{
 
         const utter =
             new SpeechSynthesisUtterance(word);
@@ -247,6 +439,7 @@ function playAudio(){
         utter.lang = "en-US";
 
         speechSynthesis.speak(utter);
+
     }
 
 }
@@ -255,3 +448,4 @@ function playAudio(){
 
 </body>
 </html>
+```
