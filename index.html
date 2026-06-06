@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -17,34 +16,70 @@
 body{
     margin:0;
     font-family:Arial, sans-serif;
+    background-color: #f9f9f9;
 }
 
 .container{
-    display:flex;
+    max-width: 900px;
+    margin: 0 auto;
     height:100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Bài đọc */
 
 .reader{
     flex:1;
-    padding:20px;
+    /* Tăng padding-bottom lên 55vh để có thể cuộn những dòng cuối cùng lên trên popup */
+    padding: 20px 20px 55vh 20px; 
     overflow-y:auto;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
 }
 
 .toolbar{
     margin-bottom:20px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    z-index: 10;
 }
 
 .toolbar button{
     padding:8px 15px;
     font-size:16px;
     cursor:pointer;
+    border: 1px solid #ccc;
+    background: #f0f0f0;
+    border-radius: 4px;
+    margin-right: 5px;
 }
 
 #content{
     font-size:26px;
     line-height:2;
+}
+
+/* Định dạng đoạn văn & Đánh số */
+.paragraph {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.para-num {
+    color: #b0b0b0;
+    font-size: 14px;
+    min-width: 30px;
+    user-select: none;
+    padding-top: 8px;
+    font-weight: bold;
+}
+
+.para-content {
+    flex: 1;
 }
 
 /* Từ */
@@ -64,57 +99,82 @@ body{
     background:#ffe082;
 }
 
-/* Panel từ điển */
+/* Panel từ điển dạng Bottom Sheet - Không dùng Overlay chặn màn hình nữa */
 
 .dictionary{
-    width:400px;
-    border-left:1px solid #ddd;
-    padding:20px;
-    overflow-y:auto;
-    background:#fafafa;
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 100%); 
+    width: 100%;
+    max-width: 500px; 
+    max-height: 50vh; /* Giới hạn chiều cao popup bằng 50% màn hình */
+    border-radius: 16px 16px 0 0; 
+    padding: 30px 20px 20px 20px; /* Thêm padding top để nhường chỗ cho nút X */
+    overflow-y: auto;
+    background: #fafafa;
+    box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
+    z-index: 1000;
+    
+    visibility: hidden;
+    transition: transform 0.3s ease-out, visibility 0.3s;
 }
 
-.dictionary h2{
-    margin-top:0;
+.dictionary.show {
+    transform: translate(-50%, 0);
+    visibility: visible;
+}
+
+/* Nút đóng popup chủ động */
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    color: #aaa;
+    cursor: pointer;
+    padding: 5px;
+    user-select: none;
+}
+
+.close-btn:hover {
+    color: #333;
 }
 
 #selectedWord{
-    font-size:32px;
+    font-size:26px;
     font-weight:bold;
+    margin-bottom: 5px;
+    color: #333;
 }
 
 #phonetic{
     color:#666;
-    font-size:18px;
+    font-size:16px;
 }
 
 #audioBtn{
-    font-size:28px;
+    font-size:24px;
     cursor:pointer;
     margin-left:10px;
+    vertical-align: middle;
 }
 
 .section{
-    margin-top:20px;
+    margin-top:15px;
+    font-size: 15px;
+    color: #444;
+}
+
+.section b {
+    color: #111;
+    display: inline-block;
+    margin-bottom: 3px;
 }
 
 .loading{
     color:#777;
-}
-
-@media (max-width:900px){
-
-    .container{
-        flex-direction:column;
-    }
-
-    .dictionary{
-        width:100%;
-        border-left:none;
-        border-top:1px solid #ddd;
-        height:300px;
-    }
-
+    font-style: italic;
 }
 
 </style>
@@ -137,9 +197,9 @@ body{
 
     </div>
 
-    <div class="dictionary">
-
-        <h2>Từ điển</h2>
+    <div class="dictionary" id="dictionaryPopup">
+        
+        <span class="close-btn" onclick="closeDictionary()">✕</span>
 
         <div id="selectedWord">
             Click vào một từ
@@ -182,7 +242,7 @@ let currentAudio = null;
 loadText();
 
 /* ------------------------- */
-/* Đọc file text.txt */
+/* Đọc file text.txt và tách đoạn */
 /* ------------------------- */
 
 function loadText(){
@@ -191,19 +251,32 @@ function loadText(){
     .then(res => res.text())
     .then(text => {
 
-        const words = text.split(/(\s+)/);
+        const paragraphs = text.split(/\r?\n+/);
 
         let html = "";
+        let paraCount = 1;
 
-        words.forEach(item => {
+        paragraphs.forEach(para => {
+            if(para.trim() === "") return;
 
-            if(item.trim()===""){
-                html += item;
-            }
-            else{
-                html += `<span class="word">${item}</span>`;
-            }
+            let paraHtml = `<div class="paragraph">
+                                <div class="para-num">${paraCount}</div>
+                                <div class="para-content">`;
+            
+            const words = para.split(/(\s+)/);
 
+            words.forEach(item => {
+                if(item.trim() === ""){
+                    paraHtml += item;
+                }
+                else{
+                    paraHtml += `<span class="word">${item}</span>`;
+                }
+            });
+
+            paraHtml += `</div></div>`;
+            html += paraHtml;
+            paraCount++;
         });
 
         document.getElementById("content").innerHTML = html;
@@ -212,10 +285,8 @@ function loadText(){
 
     })
     .catch(err => {
-
         document.getElementById("content").innerHTML =
             "Không thể đọc file text.txt";
-
         console.error(err);
     });
 
@@ -261,14 +332,43 @@ function changeFontSize(delta){
         currentFontSize = 14;
 
     document.getElementById("content")
-        .style.fontSize =
-        currentFontSize + "px";
+        .style.fontSize = currentFontSize + "px";
 
 }
 
 /* ------------------------- */
+/* Hàm Đóng / Mở Popup */
+/* ------------------------- */
+
+function openDictionary() {
+    document.getElementById("dictionaryPopup").classList.add("show");
+}
+
+function closeDictionary() {
+    document.getElementById("dictionaryPopup").classList.remove("show");
+    document.querySelectorAll(".word").forEach(w => w.classList.remove("active"));
+}
+
+/* ------------------------- */
+/* Tự động đóng popup khi bấm ra vùng trống bên ngoài */
+/* ------------------------- */
+document.addEventListener("click", function(e) {
+    const popup = document.getElementById("dictionaryPopup");
+    
+    // Nếu popup đang mở
+    if (popup.classList.contains("show")) {
+        // Nếu click KHÔNG vào từ (word) và KHÔNG nằm bên trong khung từ điển (dictionary)
+        if (!e.target.closest(".word") && !e.target.closest(".dictionary")) {
+            closeDictionary();
+        }
+    }
+});
+
+/* ------------------------- */
 
 async function lookupWord(word){
+
+    openDictionary();
 
     document.getElementById("selectedWord")
         .innerText = word;
@@ -409,8 +509,7 @@ async function lookupWord(word){
         console.error(err);
 
         document.getElementById("meaning")
-            .innerText =
-            "Không tìm thấy.";
+            .innerText = "Không tìm thấy.";
 
     }
 
@@ -448,4 +547,3 @@ function playAudio(){
 
 </body>
 </html>
-```
