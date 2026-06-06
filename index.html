@@ -31,36 +31,17 @@ body{
 
 .reader{
     flex:1;
-    /* Tăng padding-bottom lên 55vh để có thể cuộn những dòng cuối cùng lên trên popup */
+    /* Padding bottom lớn để có thể cuộn những dòng cuối cùng lên trên popup */
     padding: 20px 20px 55vh 20px; 
     overflow-y:auto;
     background: #fff;
     box-shadow: 0 0 10px rgba(0,0,0,0.05);
 }
 
-.toolbar{
-    margin-bottom:20px;
-    position: sticky;
-    top: 0;
-    background: #fff;
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
-    z-index: 10;
-}
-
-.toolbar button{
-    padding:8px 15px;
-    font-size:16px;
-    cursor:pointer;
-    border: 1px solid #ccc;
-    background: #f0f0f0;
-    border-radius: 4px;
-    margin-right: 5px;
-}
-
 #content{
     font-size:26px;
     line-height:2;
+    margin-top: 10px; /* Thêm chút khoảng trống phía trên do đã bỏ toolbar */
 }
 
 /* Định dạng đoạn văn & Đánh số */
@@ -80,7 +61,7 @@ body{
 
 .para-content {
     flex: 1;
-    text-align: justify; /* Đã thêm tính năng căn đều 2 bên tại đây */
+    text-align: justify;
 }
 
 /* Từ */
@@ -100,7 +81,42 @@ body{
     background:#ffe082;
 }
 
-/* Panel từ điển dạng Bottom Sheet - Không dùng Overlay chặn màn hình nữa */
+/* Cụm nút nổi (Floating Action Buttons) */
+.fab-container {
+    position: fixed;
+    right: 20px;
+    bottom: 40px; /* Khoảng cách cách đáy màn hình */
+    display: flex;
+    flex-direction: column; /* Xếp dọc các nút */
+    gap: 12px; /* Khoảng cách giữa 2 nút */
+    z-index: 998; /* Nằm dưới dictionaryPopup (1000) để không đè lên từ điển khi mở */
+}
+
+.fab-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%; /* Làm nút hình tròn */
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Tạo hiệu ứng đổ bóng nổi */
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, background-color 0.2s;
+    -webkit-tap-highlight-color: transparent; /* Xóa khung xanh khi tap trên điện thoại */
+}
+
+/* Hiệu ứng phản hồi khi nhấn giữ nút trên điện thoại */
+.fab-btn:active {
+    transform: scale(0.9); /* Thu nhỏ nhẹ lại khi nhấn vào */
+    background-color: #f0f0f0;
+}
+
+/* Panel từ điển dạng Bottom Sheet */
 
 .dictionary{
     position: fixed;
@@ -109,9 +125,9 @@ body{
     transform: translate(-50%, 100%); 
     width: 100%;
     max-width: 500px; 
-    max-height: 50vh; /* Giới hạn chiều cao popup bằng 50% màn hình */
+    max-height: 50vh; 
     border-radius: 16px 16px 0 0; 
-    padding: 30px 20px 20px 20px; /* Thêm padding top để nhường chỗ cho nút X */
+    padding: 30px 20px 20px 20px; 
     overflow-y: auto;
     background: #fafafa;
     box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
@@ -126,7 +142,6 @@ body{
     visibility: visible;
 }
 
-/* Nút đóng popup chủ động */
 .close-btn {
     position: absolute;
     top: 10px;
@@ -186,16 +201,14 @@ body{
 <div class="container">
 
     <div class="reader">
-
-        <div class="toolbar">
-            <button onclick="changeFontSize(2)">A+</button>
-            <button onclick="changeFontSize(-2)">A-</button>
-        </div>
-
         <div id="content">
             Đang tải nội dung...
         </div>
+    </div>
 
+    <div class="fab-container">
+        <button class="fab-btn" onclick="changeFontSize(2)">A+</button>
+        <button class="fab-btn" onclick="changeFontSize(-2)">A-</button>
     </div>
 
     <div class="dictionary" id="dictionaryPopup">
@@ -356,10 +369,9 @@ function closeDictionary() {
 document.addEventListener("click", function(e) {
     const popup = document.getElementById("dictionaryPopup");
     
-    // Nếu popup đang mở
     if (popup.classList.contains("show")) {
-        // Nếu click KHÔNG vào từ (word) và KHÔNG nằm bên trong khung từ điển (dictionary)
-        if (!e.target.closest(".word") && !e.target.closest(".dictionary")) {
+        // Thêm điều kiện loại trừ: click không trúng cả cụm nút nổi .fab-container
+        if (!e.target.closest(".word") && !e.target.closest(".dictionary") && !e.target.closest(".fab-container")) {
             closeDictionary();
         }
     }
