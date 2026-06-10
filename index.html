@@ -256,12 +256,12 @@ let currentAudio = null;
 loadText();
 
 /* ------------------------- */
-/* Đọc file text.txt và tách đoạn */
+/* Đọc file google docs và tách đoạn */
 /* ------------------------- */
 
 function loadText(){
 
-    fetch("text.txt")
+    fetch("https://docs.google.com/document/d/e/2PACX-1vTTJgqnGC1kkNyPwszxACciQ4j74kLLYYgaBaSOyrC3aJFqsWah8UcM7uWO5kazwQ/pub?output=txt")
     .then(res => res.text())
     .then(text => {
 
@@ -271,24 +271,28 @@ function loadText(){
         let paraCount = 1;
 
         paragraphs.forEach(para => {
-            if(para.trim() === "") return;
 
-            let paraHtml = `<div class="paragraph">
-                                <div class="para-num">${paraCount}</div>
-                                <div class="para-content">`;
-            
+            if(para.trim()==="") return;
+
+            let paraHtml = `
+            <div class="paragraph">
+                <div class="para-num">${paraCount}</div>
+                <div class="para-content">`;
+
             const words = para.split(/(\s+)/);
 
-            words.forEach(item => {
-                if(item.trim() === ""){
+            words.forEach(item=>{
+                if(item.trim()===""){
                     paraHtml += item;
-                }
-                else{
+                }else{
                     paraHtml += `<span class="word">${item}</span>`;
                 }
             });
 
-            paraHtml += `</div></div>`;
+            paraHtml += `
+                </div>
+            </div>`;
+
             html += paraHtml;
             paraCount++;
         });
@@ -296,12 +300,11 @@ function loadText(){
         document.getElementById("content").innerHTML = html;
 
         attachEvents();
-
     })
-    .catch(err => {
-        document.getElementById("content").innerHTML =
-            "Không thể đọc file text.txt";
+    .catch(err=>{
         console.error(err);
+        document.getElementById("content").innerHTML =
+            "Không tải được dữ liệu từ Google Docs";
     });
 
 }
