@@ -261,7 +261,7 @@ loadText();
 
 function loadText(){
 
-    fetch("https://docs.google.com/document/d/e/2PACX-1vTTJgqnGC1kkNyPwszxACciQ4j74kLLYYgaBaSOyrC3aJFqsWah8UcM7uWO5kazwQ/pub?output=txt")
+    fetch("https://docs.google.com/document/d/e/2PACX-1vTTJgqnGC1kkNyPwszxACciQ4j74kLLYYgaBaSOyrC3aJFqsWah8UcM7uWO5kazwQ/pub?embedded=true")
     .then(res => res.text())
     .then(text => {
 
