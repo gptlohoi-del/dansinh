@@ -252,8 +252,21 @@ body{
 
 let currentFontSize = 26;
 let currentAudio = null;
+let repeatCount = 1; // Mặc định đọc 1 lần nếu không nhập gì
 
+// Hỏi số lần đọc ngay khi web vừa mở lên
+askRepeatCount();
 loadText();
+
+function askRepeatCount() {
+    let input = prompt("Nhập số lần bạn muốn đọc lại từ liên tục:", "1");
+    let parsed = parseInt(input);
+    if (!isNaN(parsed) && parsed > 0) {
+        repeatCount = parsed;
+    } else {
+        repeatCount = 1; // Nếu nhập sai hoặc bấm hủy, mặc định là 1 lần
+    }
+}
 
 /* ------------------------- */
 /* Đọc file google docs và tách đoạn */
@@ -364,6 +377,10 @@ function openDictionary() {
 function closeDictionary() {
     document.getElementById("dictionaryPopup").classList.remove("show");
     document.querySelectorAll(".word").forEach(w => w.classList.remove("active"));
+    // Tự động dừng phát âm khi tắt từ điển nếu đang phát dở
+    if(window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
 }
 
 /* ------------------------- */
@@ -502,22 +519,9 @@ async function lookupWord(word){
             .innerText = vietnamese;
 
         /* -------------------------
-           Tự động phát âm
+           Tự động phát âm liên tục dựa theo repeatCount
         ------------------------- */
-
-        if(currentAudio){
-
-            new Audio(currentAudio).play();
-
-        }else{
-
-            const utter =
-                new SpeechSynthesisUtterance(word);
-
-            utter.lang = "en-US";
-
-            speechSynthesis.speak(utter);
-        }
+        playMultipleTimes(word);
 
     }
     catch(err){
@@ -532,31 +536,57 @@ async function lookupWord(word){
 }
 
 /* ------------------------- */
-
-function playAudio(){
-
-    const word =
-        document.getElementById("selectedWord")
-        .innerText;
-
-    if(!word || word==="Click vào một từ")
-        return;
-
-    if(currentAudio){
-
-        new Audio(currentAudio).play();
-
-    }else{
-
-        const utter =
-            new SpeechSynthesisUtterance(word);
-
-        utter.lang = "en-US";
-
-        speechSynthesis.speak(utter);
-
+/* Hàm phát thanh đa năng hỗ trợ lặp từ */
+/* ------------------------- */
+function playMultipleTimes(word) {
+    // Trước khi đọc chuỗi mới, xóa các câu thoại cũ đang chờ trong hàng đợi TTS
+    if(window.speechSynthesis) {
+        window.speechSynthesis.cancel();
     }
 
+    let count = 0;
+
+    function playNext() {
+        if (count >= repeatCount) return; // Đã đọc đủ số lần thì dừng lại
+
+        if (currentAudio) {
+            // Trường hợp sử dụng file âm thanh từ Dictionary API
+            let audio = new Audio(currentAudio);
+            audio.addEventListener('ended', () => {
+                count++;
+                // Nghỉ khoảng 300ms giữa các lần đọc để không bị dính chữ vào nhau
+                setTimeout(playNext, 300); 
+            });
+            audio.play().catch(err => {
+                // Đề phòng lỗi trình duyệt chặn tự động phát, chuyển sang dùng TTS luôn
+                fallbackTTS();
+            });
+        } else {
+            fallbackTTS();
+        }
+    }
+
+    function fallbackTTS() {
+        if (count >= repeatCount) return;
+        const utter = new SpeechSynthesisUtterance(word);
+        utter.lang = "en-US";
+        utter.onend = function() {
+            count++;
+            setTimeout(playNext, 300);
+        };
+        speechSynthesis.speak(utter);
+    }
+
+    playNext();
+}
+
+function playAudio(){
+    const word = document.getElementById("selectedWord").innerText;
+
+    if(!word || word === "Click vào một từ" || word === "đang tra cứu...")
+        return;
+
+    playMultipleTimes(word);
 }
 
 </script>
