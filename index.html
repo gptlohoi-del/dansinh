@@ -259,7 +259,7 @@ askRepeatCount();
 loadText();
 
 function askRepeatCount() {
-    let input = prompt("Nhập số lần bạn muốn đọc lại từ liên tục:", "1");
+    let input = prompt("Nhập số lần bạn muốn đọc lại từ liên tục:", "");
     let parsed = parseInt(input);
     if (!isNaN(parsed) && parsed > 0) {
         repeatCount = parsed;
