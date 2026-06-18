@@ -31,7 +31,6 @@ body{
 
 .reader{
     flex:1;
-    /* Padding bottom lớn để có thể cuộn những dòng cuối cùng lên trên popup */
     padding: 20px 20px 55vh 20px; 
     overflow-y:auto;
     background: #fff;
@@ -40,14 +39,14 @@ body{
 
 #content{
     font-size:26px;
-    line-height:2;
-    margin-top: 10px; /* Thêm chút khoảng trống phía trên do đã bỏ toolbar */
+    line-height:1.2; /* Thu nhỏ line-height lại vì đã có gap giữa các dòng */
+    margin-top: 10px; 
 }
 
 /* Định dạng đoạn văn & Đánh số */
 .paragraph {
     display: flex;
-    margin-bottom: 20px;
+    margin-bottom: 35px; /* Tăng khoảng cách giữa các đoạn */
 }
 
 .para-num {
@@ -55,22 +54,33 @@ body{
     font-size: 14px;
     min-width: 30px;
     user-select: none;
-    padding-top: 8px;
+    padding-top: 4px;
     font-weight: bold;
 }
 
+/* Container chứa các cụm từ - cho phép tự động rớt dòng */
 .para-content {
     flex: 1;
-    text-align: justify;
+    display: flex;
+    flex-wrap: wrap; /* Tự động xuống dòng khi hết chỗ */
+    gap: 20px 8px; /* 20px khoảng cách dòng, 8px khoảng cách giữa các từ */
+    align-items: flex-start;
 }
 
-/* Từ */
+/* Khối ghép cặp 1 từ tiếng Anh và 1 từ phiên âm */
+.word-pair {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center; /* Căn giữa phiên âm ngay dưới từ */
+}
 
+/* Từ tiếng Anh */
 .word{
     cursor:pointer;
     border-radius:4px;
-    padding:2px 3px;
+    padding:2px 4px;
     transition:0.2s;
+    text-align: center;
 }
 
 .word:hover{
@@ -81,24 +91,33 @@ body{
     background:#ffe082;
 }
 
+/* Từ phiên âm */
+.trans-word {
+    font-size: 0.6em; /* Tỉ lệ kích thước phiên âm so với từ tiếng anh */
+    color: #666;
+    margin-top: 2px;
+    text-align: center;
+    user-select: none;
+}
+
 /* Cụm nút nổi (Floating Action Buttons) */
 .fab-container {
     position: fixed;
     right: 20px;
-    bottom: 40px; /* Khoảng cách cách đáy màn hình */
+    bottom: 40px; 
     display: flex;
-    flex-direction: column; /* Xếp dọc các nút */
-    gap: 12px; /* Khoảng cách giữa 2 nút */
-    z-index: 998; /* Nằm dưới dictionaryPopup (1000) để không đè lên từ điển khi mở */
+    flex-direction: column; 
+    gap: 12px; 
+    z-index: 998; 
 }
 
 .fab-btn {
     width: 50px;
     height: 50px;
-    border-radius: 50%; /* Làm nút hình tròn */
+    border-radius: 50%; 
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Tạo hiệu ứng đổ bóng nổi */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); 
     font-size: 18px;
     font-weight: bold;
     color: #333;
@@ -107,12 +126,11 @@ body{
     align-items: center;
     justify-content: center;
     transition: transform 0.1s, background-color 0.2s;
-    -webkit-tap-highlight-color: transparent; /* Xóa khung xanh khi tap trên điện thoại */
+    -webkit-tap-highlight-color: transparent; 
 }
 
-/* Hiệu ứng phản hồi khi nhấn giữ nút trên điện thoại */
 .fab-btn:active {
-    transform: scale(0.9); /* Thu nhỏ nhẹ lại khi nhấn vào */
+    transform: scale(0.9); 
     background-color: #f0f0f0;
 }
 
@@ -252,9 +270,8 @@ body{
 
 let currentFontSize = 26;
 let currentAudio = null;
-let repeatCount = 1; // Mặc định đọc 1 lần nếu không nhập gì
+let repeatCount = 1; 
 
-// Hỏi số lần đọc ngay khi web vừa mở lên
 askRepeatCount();
 loadText();
 
@@ -264,12 +281,12 @@ function askRepeatCount() {
     if (!isNaN(parsed) && parsed > 0) {
         repeatCount = parsed;
     } else {
-        repeatCount = 1; // Nếu nhập sai hoặc bấm hủy, mặc định là 1 lần
+        repeatCount = 1; 
     }
 }
 
 /* ------------------------- */
-/* Đọc file google docs và tách đoạn */
+/* Đọc file google docs, chia từ và ghép cặp với phiên âm */
 /* ------------------------- */
 
 function loadText(){
@@ -278,29 +295,51 @@ function loadText(){
     .then(res => res.text())
     .then(text => {
 
-        const paragraphs = text.split(/\r?\n+/);
+        // Cắt dữ liệu thành 2 phần dựa trên dòng chữ TRANSCRIPTION
+        const parts = text.split(/TRANSCRIPTION/);
+        const engText = parts[0] || "";
+        const transText = parts[1] || "";
+
+        // Tách thành các đoạn (xóa những đoạn rỗng)
+        const engParagraphs = engText.split(/\r?\n+/).filter(p => p.trim() !== "");
+        const transParagraphs = transText.split(/\r?\n+/).filter(p => p.trim() !== "");
 
         let html = "";
         let paraCount = 1;
 
-        paragraphs.forEach(para => {
+        const maxLen = Math.max(engParagraphs.length, transParagraphs.length);
 
-            if(para.trim()==="") return;
+        for (let i = 0; i < maxLen; i++) {
+            let ePara = engParagraphs[i] || "";
+            let tPara = transParagraphs[i] || "";
+
+            if (ePara === "" && tPara === "") continue;
 
             let paraHtml = `
             <div class="paragraph">
                 <div class="para-num">${paraCount}</div>
                 <div class="para-content">`;
 
-            const words = para.split(/(\s+)/);
+            // Tách các đoạn thành từng từ dựa trên khoảng trắng
+            const eWords = ePara.trim().split(/\s+/);
+            const tWords = tPara.trim().split(/\s+/);
+            
+            // Lặp theo mảng có số lượng từ nhiều hơn (để tránh sót từ)
+            const wordCount = Math.max(eWords.length, tWords.length);
 
-            words.forEach(item=>{
-                if(item.trim()===""){
-                    paraHtml += item;
-                }else{
-                    paraHtml += `<span class="word">${item}</span>`;
-                }
-            });
+            for (let j = 0; j < wordCount; j++) {
+                let eW = eWords[j] || "";
+                let tW = tWords[j] || "";
+                
+                if (eW === "" && tW === "") continue;
+
+                // Tạo một khối bọc cặp (Từ + Phiên âm)
+                paraHtml += `
+                    <div class="word-pair">
+                        <span class="word">${eW}</span>
+                        <span class="trans-word">${tW}</span>
+                    </div>`;
+            }
 
             paraHtml += `
                 </div>
@@ -308,7 +347,7 @@ function loadText(){
 
             html += paraHtml;
             paraCount++;
-        });
+        }
 
         document.getElementById("content").innerHTML = html;
 
@@ -377,7 +416,7 @@ function openDictionary() {
 function closeDictionary() {
     document.getElementById("dictionaryPopup").classList.remove("show");
     document.querySelectorAll(".word").forEach(w => w.classList.remove("active"));
-    // Tự động dừng phát âm khi tắt từ điển nếu đang phát dở
+    
     if(window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
@@ -390,8 +429,7 @@ document.addEventListener("click", function(e) {
     const popup = document.getElementById("dictionaryPopup");
     
     if (popup.classList.contains("show")) {
-        // Thêm điều kiện loại trừ: click không trúng cả cụm nút nổi .fab-container
-        if (!e.target.closest(".word") && !e.target.closest(".dictionary") && !e.target.closest(".fab-container")) {
+        if (!e.target.closest(".word-pair") && !e.target.closest(".dictionary") && !e.target.closest(".fab-container")) {
             closeDictionary();
         }
     }
@@ -426,17 +464,8 @@ async function lookupWord(word){
 
     try{
 
-        /* -------------------------
-           Dictionary API
-        ------------------------- */
-
-        const dictRes =
-            await fetch(
-                `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`
-            );
-
-        const dictData =
-            await dictRes.json();
+        const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        const dictData = await dictRes.json();
 
         let phonetic = "";
         let definition = "";
@@ -445,16 +474,10 @@ async function lookupWord(word){
 
         if(Array.isArray(dictData)){
 
-            phonetic =
-                dictData[0].phonetic || "";
+            phonetic = dictData[0].phonetic || "";
 
-            const phonetics =
-                dictData[0].phonetics || [];
-
-            const audioObj =
-                phonetics.find(
-                    p => p.audio && p.audio.length > 0
-                );
+            const phonetics = dictData[0].phonetics || [];
+            const audioObj = phonetics.find(p => p.audio && p.audio.length > 0);
 
             if(audioObj){
                 currentAudio = audioObj.audio;
@@ -462,23 +485,13 @@ async function lookupWord(word){
 
             if(dictData[0].meanings?.length){
 
-                const firstMeaning =
-                    dictData[0].meanings[0];
-
-                partOfSpeech =
-                    firstMeaning.partOfSpeech || "";
+                const firstMeaning = dictData[0].meanings[0];
+                partOfSpeech = firstMeaning.partOfSpeech || "";
 
                 if(firstMeaning.definitions?.length){
 
-                    definition =
-                        firstMeaning
-                        .definitions[0]
-                        .definition || "";
-
-                    example =
-                        firstMeaning
-                        .definitions[0]
-                        .example || "";
+                    definition = firstMeaning.definitions[0].definition || "";
+                    example = firstMeaning.definitions[0].example || "";
 
                 }
 
@@ -486,50 +499,24 @@ async function lookupWord(word){
 
         }
 
-        document.getElementById("phonetic")
-            .innerText = phonetic;
+        document.getElementById("phonetic").innerText = phonetic;
+        document.getElementById("definition").innerText = definition;
+        document.getElementById("example").innerText = example;
+        document.getElementById("partOfSpeech").innerText = partOfSpeech;
 
-        document.getElementById("definition")
-            .innerText = definition;
+        const transRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(word)}`);
+        const transData = await transRes.json();
+        const vietnamese = transData[0].map(item => item[0]).join("");
 
-        document.getElementById("example")
-            .innerText = example;
+        document.getElementById("meaning").innerText = vietnamese;
 
-        document.getElementById("partOfSpeech")
-            .innerText = partOfSpeech;
-
-        /* -------------------------
-           Google Translate
-        ------------------------- */
-
-        const transRes =
-            await fetch(
-                `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(word)}`
-            );
-
-        const transData =
-            await transRes.json();
-
-        const vietnamese =
-            transData[0]
-            .map(item => item[0])
-            .join("");
-
-        document.getElementById("meaning")
-            .innerText = vietnamese;
-
-        /* -------------------------
-           Tự động phát âm liên tục dựa theo repeatCount
-        ------------------------- */
         playMultipleTimes(word);
 
     }
     catch(err){
 
         console.error(err);
-
-        document.getElementById("meaning")
-            .innerText = "Không tìm thấy.";
+        document.getElementById("meaning").innerText = "Không tìm thấy.";
 
     }
 
@@ -539,7 +526,6 @@ async function lookupWord(word){
 /* Hàm phát thanh đa năng hỗ trợ lặp từ */
 /* ------------------------- */
 function playMultipleTimes(word) {
-    // Trước khi đọc chuỗi mới, xóa các câu thoại cũ đang chờ trong hàng đợi TTS
     if(window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
@@ -547,18 +533,15 @@ function playMultipleTimes(word) {
     let count = 0;
 
     function playNext() {
-        if (count >= repeatCount) return; // Đã đọc đủ số lần thì dừng lại
+        if (count >= repeatCount) return; 
 
         if (currentAudio) {
-            // Trường hợp sử dụng file âm thanh từ Dictionary API
             let audio = new Audio(currentAudio);
             audio.addEventListener('ended', () => {
                 count++;
-                // Nghỉ khoảng 300ms giữa các lần đọc để không bị dính chữ vào nhau
                 setTimeout(playNext, 300); 
             });
             audio.play().catch(err => {
-                // Đề phòng lỗi trình duyệt chặn tự động phát, chuyển sang dùng TTS luôn
                 fallbackTTS();
             });
         } else {
